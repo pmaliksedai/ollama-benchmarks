@@ -9,6 +9,9 @@ spec:
       containers:
       - name: ollama-benchmarks
         image: registry.connorskees.com/lib/ollama-benchmarks:latest
+        env:
+        - name: OLLAMA_BASE_URL
+          value: http://localhost:380080/
         imagePullPolicy: Always
         command: ["/app/main"]
         envFrom:

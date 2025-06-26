@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"net/http"
 	"net/url"
 	"os"
@@ -10,8 +9,6 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/ollama/ollama/api"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -19,10 +16,6 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 )
 
-const (
-	minioApi    = "minio-api.connorskees.com"
-	minioBucket = "youtube"
-)
 
 type Model struct {
 	Name       string
@@ -31,10 +24,10 @@ type Model struct {
 }
 
 var (
-	ollamaApi, _ = url.Parse("https://ollama-api.connorskees.com")
+	ollamaApi, _ = url.Parse(os.Getenv("OLLAMA_BASE_URL"))
 	models       = []*Model{
-		{Name: "codellama:7b", ParamCount: "7B", Storage: "3.8GB"},
-		{Name: "llama2-uncensored:7b", ParamCount: "7B", Storage: "3.8GB"},
+		{Name: "codellama:latest", ParamCount: "7B", Storage: "3.8GB"},
+		{Name: "llama2:latest", ParamCount: "7B", Storage: "3.8GB"},
 		{Name: "llama3:latest", ParamCount: "8B", Storage: "4.7GB"},
 		{Name: "tinyllama:latest", ParamCount: "1.1B", Storage: "640MB"},
 	}
@@ -59,15 +52,6 @@ func init() {
 }
 
 func main() {
-	// Initialize minio client object.
-	minioClient, err := minio.New(minioApi, &minio.Options{
-		Creds: credentials.NewStaticV4(
-			os.Getenv("MINIO_KEY_ID"), os.Getenv("MINIO_SECRET_KEY"), "",
-		),
-		Secure: true,
-	})
-	must(err)
-
 	var (
 		ollama         = api.NewClient(ollamaApi, http.DefaultClient)
 		c              = New(ollama)
@@ -82,10 +66,6 @@ func main() {
 		<-shutdown
 		log.Info().Timestamp().Msg("End")
 
-		var filename = "run" + time.Now().Format(time.RFC3339) + ".csv"
-		_, err = minioClient.PutObject(context.Background(), minioBucket, filename, runs.ToCSV(), -1, minio.PutObjectOptions{})
-		must(err)
-		log.Info().Str("filename", filename).Msg("Uploaded to Minio")
 		done <- nil
 	}()
 
@@ -108,4 +88,5 @@ func main() {
 
 	shutdown <- nil
 	<-done
+os.Exit(0)
 }
